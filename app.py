@@ -1,4 +1,4 @@
-import wave, sys
+import wave, sys, os
 import numpy as np
 
 # --------------------------------------------------------------------------------------------- Global Variables
@@ -30,27 +30,32 @@ def text_to_morse(input_file):
     print("Creating file: " + out_file)
     output = open(out_file, 'w')
 
-    
-
     with open(input_file, 'r') as inp_file:
         break_point = False
 
         while not break_point:
-            char = inp_file.read(1)
+            char = inp_file.read(1).upper()
 
             if not char:
                 break_point = True
             elif char in valid_chars:
-                output.write(morse_codes[char.upper()])
+                output.write(morse_codes[char])
                 
+                print("'{}' : {}".format(char, morse_codes[char]))
+
                 if char != ' ':
                     output.write(SPACE)
-
     
-
     output.close()
 
+def morse_to_txt(input_file):
+    pass
 
+def morse_to_wave(input_file):
+    pass
+
+def wav_to_txt(input_file):
+    pass
 
 # ------------------------------------------------------------------------------------------- Main
 def main(args):
