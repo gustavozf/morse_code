@@ -15,7 +15,7 @@ morse_codes = {
     " ": '0000000'
 }
 
-invert_morse_codes = { morse : char for char, morse in morse_codes.items() }
+inv_morse_codes = { morse : char for char, morse in morse_codes.items() }
 
 valid_chars = list(morse_codes.keys())
 
@@ -25,22 +25,25 @@ SPACE = '000'
 def text_to_morse(input_file):
     global morse_codes
     global valid_chars
+
     out_file = input_file.split('.txt')[0] + '.morse'
-    
     print("Creating file: " + out_file)
     output = open(out_file, 'w')
 
     with open(input_file, 'r') as inp_file:
         break_point = False
 
+        # read the file char by char
         while not break_point:
             char = inp_file.read(1).upper()
 
+            # if EOF
             if not char:
                 break_point = True
+            # else, if the read char is valid
             elif char in valid_chars:
+                # write the morse code
                 output.write(morse_codes[char])
-                
                 print("'{}' : {}".format(char, morse_codes[char]))
 
                 if char != ' ':
@@ -49,12 +52,47 @@ def text_to_morse(input_file):
     output.close()
 
 def morse_to_txt(input_file):
-    pass
+    global inv_morse_codes
+    out_file = input_file.split('.morse')[0] + '.txt'
+    
+    print("Creating file: " + out_file)
+    output = open(out_file, 'w')
+
+    with open(input_file, 'r') as inp_file:
+        break_point = False
+        zeros_count = 0
+        morse_word = ''
+
+        while not break_point:
+            char = inp_file.read(1)
+
+            if not char:
+                output.write(inv_morse_codes[morse_word[:-zeros_count]])
+                #print("'{}' : {}".format(morse_word[:-zeros_count], inv_morse_codes[morse_word[:-zeros_count]]))
+                
+                break_point = True
+            elif char == '0':
+                zeros_count += 1
+            else:
+                if zeros_count >= 3:
+                    output.write(inv_morse_codes[morse_word[:-zeros_count]])
+                    #print("'{}' : {}".format(morse_word[:-zeros_count], inv_morse_codes[morse_word[:-zeros_count]]))
+                    morse_word = ''
+
+                    if zeros_count > 4:
+                        output.write(' ')
+                        #print("'{}' : '{}'".format('0000000', ' '))
+                zeros_count = 0
+
+            morse_word += char
+                
+    output.close()
+
 
 def morse_to_wave(input_file):
     pass
 
-def wav_to_txt(input_file):
+def wav_to_morse(input_file):
     pass
 
 # ------------------------------------------------------------------------------------------- Main
@@ -66,18 +104,23 @@ def main(args):
         input_file = args[1]
         print("Input File: " + input_file)
 
+        if not os.path.isfile(input_file):
+            print("Error: File not found!")
+            return False
+
         if input_file.endswith('.txt'):
             # text => morse
             text_to_morse(input_file)
-            # text => wav OU morse => wave
+            # morse => wave
             return True
         elif input_file.endswith('.morse'):
             # morse => text
+            morse_to_txt(input_file)
             # morse => wav
             return True
         elif input_file.endswith('.wav'):
-            # wav => text
-            # wav => morse OU text => morse
+            # wav => morse 
+            # morse => text
             return True
         else:
             print("Error: Invalid file extention!")
