@@ -1,5 +1,7 @@
-import wave, sys, os
+import wave, sys, os, struct
 import numpy as np
+
+import matplotlib.pyplot as plt
 
 # --------------------------------------------------------------------------------------------- Global Variables
 morse_codes = {
@@ -11,27 +13,43 @@ morse_codes = {
     "U": '1010111',       "V": '101010111',       "W": '101110111',         "X": '11101010111',
     "Y": '1110101110111', "Z": '11101110101',     "1": '10111011101110111', "2": '101011101110111',
     "3": '1010101110111', "4": '10101010111',     "5": '101010101',         "6": '11101010101',
-    "7": '1110111010101', "8": '111011101110101', "9": '11101110111011101', "0": '1110111011101110111',
-    " ": '0000000'
+    "7": '1110111010101', "8": '111011101110101', "9": '11101110111011101', "0": '1110111011101110111'
 }
 
 inv_morse_codes = { morse : char for char, morse in morse_codes.items() }
 
-valid_chars = list(morse_codes.keys())
+valid_chars = list(morse_codes.keys()) + [' ']
 
-SPACE = '000'
+SPACE_LETTERS = '000'
+SPACE_WORDS = '0000000'
+
+# Frequência como constante 440 hz;
+FREQ = 440
+    
+# Taxa de amostragem constante 48000;
+SAMP_RATE = 48000
+
+# Amplitude 16000;
+AMPL = 16000
+
+#Unidade de tempo de som como constante com valor de 0.25s. 
+#Isto é, uma unidade do código morse dura 0.25s, tratar uma pequena variação disso se for necessário, +- 0.01s;
+TIME_UNI = 0.25
 
 # -------------------------------------------------------------------------------------------- Functions
-def text_to_morse(input_file):
+def text_to_morse(file_name):
     global morse_codes
     global valid_chars
 
-    out_file = input_file.split('.txt')[0] + '.morse'
+    input_file = file_name + '.txt'
+    out_file = file_name + '.morse'
+
     print("Creating file: " + out_file)
     output = open(out_file, 'w')
 
     with open(input_file, 'r') as inp_file:
         break_point = False
+        put_space = False
 
         # read the file char by char
         while not break_point:
@@ -42,18 +60,23 @@ def text_to_morse(input_file):
                 break_point = True
             # else, if the read char is valid
             elif char in valid_chars:
-                # write the morse code
-                output.write(morse_codes[char])
-                print("'{}' : {}".format(char, morse_codes[char]))
+                if char == ' ':
+                    put_space = True
+                else:
+                    if(put_space):
+                        output.write(SPACE_WORDS)
+                        put_space = False
 
-                if char != ' ':
-                    output.write(SPACE)
-    
+                    output.write(morse_codes[char])
+                    output.write(SPACE_LETTERS)
+             
     output.close()
 
-def morse_to_txt(input_file):
+def morse_to_txt(file_name):
     global inv_morse_codes
-    out_file = input_file.split('.morse')[0] + '.txt'
+
+    input_file = file_name + '.morse'
+    out_file = file_name + '.txt'
     
     print("Creating file: " + out_file)
     output = open(out_file, 'w')
@@ -89,10 +112,47 @@ def morse_to_txt(input_file):
     output.close()
 
 
-def morse_to_wave(input_file):
-    pass
+def morse_to_wave(file_name):
+    global FREQ
+    global AMPL
+    global SAMP_RATE
+    global TIME_UNI
 
-def wav_to_morse(input_file):
+    input_file = file_name + '.morse'
+    out_file = file_name + '.wav'
+
+    comptype='NONE'
+    compname='not compressed' 
+    sampwidth=2
+    num_channels=1
+
+    with open(input_file, 'r') as inp_file:
+        morse = np.array([int(i) for i in inp_file.readline()])
+    
+    num_samples = int(SAMP_RATE * TIME_UNI)
+
+    wave_0 = [0 for i in range(num_samples)]
+    wave_1 = [np.sin(2 * np.pi * FREQ * i / SAMP_RATE) for i in range(num_samples)]
+    waves = [wave_0, wave_1]
+
+    full_wave = []
+    for i in morse:
+        full_wave.extend(waves[i])
+
+    plt.plot(full_wave)
+    plt.savefig(file_name + '_wave.pdf')
+
+    print("Creating file: " + out_file)
+    n_frames = len(full_wave)  # Len of the wave is the number of the frames.
+    with wave.open(out_file, 'w') as wave_file:
+        wave_file.setparams((num_channels, sampwidth, SAMP_RATE, n_frames, comptype, compname))
+
+        for signal in full_wave:
+            value = int(signal * AMPL)
+            wave_file.writeframes(struct.pack('h', value))
+
+
+def wave_to_morse(input_file):
     pass
 
 # ------------------------------------------------------------------------------------------- Main
@@ -109,18 +169,26 @@ def main(args):
             return False
 
         if input_file.endswith('.txt'):
+            file_name = input_file.split('.txt')[0]
             # text => morse
-            text_to_morse(input_file)
+            text_to_morse(file_name)
             # morse => wave
+            morse_to_wave(file_name)
+
             return True
         elif input_file.endswith('.morse'):
+            file_name = input_file.split('.morse')[0]
             # morse => text
-            morse_to_txt(input_file)
+            morse_to_txt(file_name)
             # morse => wav
+            morse_to_wave(file_name)
+
             return True
         elif input_file.endswith('.wav'):
+            file_name = input_file.split('.wav')[0]
             # wav => morse 
             # morse => text
+            morse_to_txt(file_name)
             return True
         else:
             print("Error: Invalid file extention!")
