@@ -140,9 +140,10 @@ def morse_to_wave(file_name):
         full_wave.extend(waves[i])
 
     plt.plot(full_wave)
-    plt.savefig(file_name + '_wave.pdf')
+    plt.savefig(file_name + '_wave.png')
 
     print("Creating file: " + out_file)
+    print("Estimated time: " + str(len(morse)*TIME_UNI))
     n_frames = len(full_wave)  # Len of the wave is the number of the frames.
     with wave.open(out_file, 'w') as wave_file:
         wave_file.setparams((num_channels, sampwidth, SAMP_RATE, n_frames, comptype, compname))
@@ -152,8 +153,24 @@ def morse_to_wave(file_name):
             wave_file.writeframes(struct.pack('h', value))
 
 
-def wave_to_morse(input_file):
-    pass
+def wave_to_morse(file_name):
+    global SAMP_RATE
+
+    input_file = file_name + '.wav'
+    out_file = file_name + '.morse'
+
+    with wave.open(input_file, 'r') as wave_file:
+        n_frames = wave_file.getnframes()
+        data = wave_file.readframes(n_frames)
+        data = np.array(struct.unpack('{n}h'.format(n=n_frames), data))
+        
+    print(data[:100])
+    plt.plot(data)
+    plt.savefig(file_name + '_wave.png')
+
+    #print(data[:25])
+    plt.plot(np.fft.fft(data))
+    plt.savefig(file_name + '_fft_wave.png')
 
 # ------------------------------------------------------------------------------------------- Main
 def main(args):
@@ -187,6 +204,7 @@ def main(args):
         elif input_file.endswith('.wav'):
             file_name = input_file.split('.wav')[0]
             # wav => morse 
+            wave_to_morse(file_name)
             # morse => text
             morse_to_txt(file_name)
             return True
