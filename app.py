@@ -140,7 +140,7 @@ def morse_to_wave(file_name):
         full_wave.extend(waves[i])
 
     plt.plot(full_wave)
-    plt.savefig(file_name + '_wave.pdf')
+    plt.savefig(file_name + '_wave.png')
 
     print("Creating file: " + out_file)
     n_frames = len(full_wave)  # Len of the wave is the number of the frames.
