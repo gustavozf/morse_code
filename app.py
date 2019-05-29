@@ -145,7 +145,7 @@ def morse_to_wave(file_name):
     print("Creating file: " + out_file)
     print("Estimated time: " + str(len(morse)*TIME_UNI))
     n_frames = len(full_wave)  # Len of the wave is the number of the frames.
-    with wave.open(out_file, 'w') as wave_file:
+    with wave.open(out_file, 'wb') as wave_file:
         wave_file.setparams((num_channels, sampwidth, SAMP_RATE, n_frames, comptype, compname))
 
         for signal in full_wave:
@@ -155,22 +155,26 @@ def morse_to_wave(file_name):
 
 def wave_to_morse(file_name):
     global SAMP_RATE
+    global TIME_UNI
 
     input_file = file_name + '.wav'
     out_file = file_name + '.morse'
 
-    with wave.open(input_file, 'r') as wave_file:
+    num_samples = int(SAMP_RATE * TIME_UNI)
+
+    with wave.open(input_file, 'rb') as wave_file:
         n_frames = wave_file.getnframes()
         data = wave_file.readframes(n_frames)
         data = np.array(struct.unpack('{n}h'.format(n=n_frames), data))
         
-    print(data[:100])
-    plt.plot(data)
-    plt.savefig(file_name + '_wave.png')
-
-    #print(data[:25])
-    plt.plot(np.fft.fft(data))
-    plt.savefig(file_name + '_fft_wave.png')
+    output = open(out_file, 'w')
+    for i in range(0, len(data), num_samples):
+        if data[i:i+num_samples].max() > 0:
+            output.write('1')
+        else:
+            output.write('0')
+        
+    output.close
 
 # ------------------------------------------------------------------------------------------- Main
 def main(args):
