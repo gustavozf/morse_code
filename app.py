@@ -1,4 +1,4 @@
-import wave, sys, os, struct
+import wave, sys, os, struct, re
 import numpy as np
 
 import matplotlib.pyplot as plt
@@ -13,12 +13,13 @@ morse_codes = {
     "U": '1010111',       "V": '101010111',       "W": '101110111',         "X": '11101010111',
     "Y": '1110101110111', "Z": '11101110101',     "1": '10111011101110111', "2": '101011101110111',
     "3": '1010101110111', "4": '10101010111',     "5": '101010101',         "6": '11101010101',
-    "7": '1110111010101', "8": '111011101110101', "9": '11101110111011101', "0": '1110111011101110111'
+    "7": '1110111010101', "8": '111011101110101', "9": '11101110111011101', "0": '1110111011101110111',
+    " ": '0000000',      "\n": '\n',               "": ''
 }
 
 inv_morse_codes = { morse : char for char, morse in morse_codes.items() }
 
-valid_chars = list(morse_codes.keys()) + [' ']
+valid_chars = list(morse_codes.keys()) #+ [' ']
 
 SPACE_LETTERS = '000'
 SPACE_WORDS = '0000000'
@@ -48,32 +49,36 @@ def text_to_morse(file_name):
     output = open(out_file, 'w')
 
     with open(input_file, 'r') as inp_file:
-        break_point = False
-        put_space = False
-
-        # read the file char by char
-        while not break_point:
-            char = inp_file.read(1).upper()
-
-            # if EOF
-            if not char:
-                break_point = True
-            # else, if the read char is valid
-            elif char in valid_chars:
-                if char == ' ':
-                    put_space = True
-                else:
-                    if(put_space):
-                        output.write(SPACE_WORDS)
-                        put_space = False
-
+        # para todas as linhas do arquivo
+        for f_line in inp_file:
+            # retira caracteres indesejados
+            f_line = re.sub(' +', ' ', f_line)
+            #f_line = re.sub('\n', '', f_line)
+            
+            last_char = ' '
+            # para todos os caracteres 
+            for char in f_line:
+                char = char.upper()
+                # se o caracter for valido, o escreve
+                if char in valid_chars:
+                    # se o ultimo caracter que for lido nao for um espaco entre palavras,
+                    # escreve o espaco entre as letras
+                    if last_char != ' ' and char != ' ':
+                        output.write(SPACE_LETTERS)
+                        
+                    # escreve o morse equivalente
                     output.write(morse_codes[char])
-                    output.write(SPACE_LETTERS)
-             
+
+                    # atuliza o ultimo char visto
+                    last_char = char
+
+            #output.write('\n')
     output.close()
 
 def morse_to_txt(file_name):
     global inv_morse_codes
+    global SPACE_WORDS
+    global SPACE_LETTERS
 
     input_file = file_name + '.morse'
     out_file = file_name + '.txt'
@@ -82,33 +87,19 @@ def morse_to_txt(file_name):
     output = open(out_file, 'w')
 
     with open(input_file, 'r') as inp_file:
-        break_point = False
-        zeros_count = 0
-        morse_word = ''
-
-        while not break_point:
-            char = inp_file.read(1)
-
-            if not char:
-                output.write(inv_morse_codes[morse_word[:-zeros_count]])
-                #print("'{}' : {}".format(morse_word[:-zeros_count], inv_morse_codes[morse_word[:-zeros_count]]))
+        for f_line in inp_file:
+            # retira os caracteres indesejados
+            f_line = re.sub('\n', '', f_line)
+            # para todas as palavras encontradas na linha
+            for word in f_line.split(SPACE_WORDS):
+                last_char = ''
+                # para todos os caracteres na palavra
+                for char in word.split(SPACE_LETTERS):
+                    last_char = inv_morse_codes[char]
+                    # escreve a letra correspondente
+                    output.write(last_char)
                 
-                break_point = True
-            elif char == '0':
-                zeros_count += 1
-            else:
-                if zeros_count >= 3:
-                    output.write(inv_morse_codes[morse_word[:-zeros_count]])
-                    #print("'{}' : {}".format(morse_word[:-zeros_count], inv_morse_codes[morse_word[:-zeros_count]]))
-                    morse_word = ''
-
-                    if zeros_count > 4:
-                        output.write(' ')
-                        #print("'{}' : '{}'".format('0000000', ' '))
-                zeros_count = 0
-
-            morse_word += char
-                
+                output.write(' ')
     output.close()
 
 
@@ -127,7 +118,7 @@ def morse_to_wave(file_name):
     num_channels=1
 
     with open(input_file, 'r') as inp_file:
-        morse = np.array([int(i) for i in inp_file.readline()])
+        morse = np.array([int(i) for i in inp_file.readline() if i != '\n'])
     
     num_samples = int(SAMP_RATE * TIME_UNI)
 
@@ -143,7 +134,7 @@ def morse_to_wave(file_name):
     plt.savefig(file_name + '_wave.png')
 
     print("Creating file: " + out_file)
-    print("Estimated time: " + str(len(morse)*TIME_UNI))
+    print("Estimated time (in seconds): " + str(len(morse)*TIME_UNI))
     n_frames = len(full_wave)  # Len of the wave is the number of the frames.
     with wave.open(out_file, 'wb') as wave_file:
         wave_file.setparams((num_channels, sampwidth, SAMP_RATE, n_frames, comptype, compname))
@@ -167,6 +158,7 @@ def wave_to_morse(file_name):
         data = wave_file.readframes(n_frames)
         data = np.array(struct.unpack('{n}h'.format(n=n_frames), data))
         
+    print('Creating file: ' + out_file) 
     output = open(out_file, 'w')
     for i in range(0, len(data), num_samples):
         if data[i:i+num_samples].max() > 0:
