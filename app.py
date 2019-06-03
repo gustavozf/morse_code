@@ -53,7 +53,7 @@ def text_to_morse(file_name):
         for f_line in inp_file:
             # retira caracteres indesejados
             f_line = re.sub(' +', ' ', f_line)
-            #f_line = re.sub('\n', '', f_line)
+            f_line = re.sub('\n', '', f_line)
             
             last_char = ' '
             # para todos os caracteres 
@@ -72,7 +72,7 @@ def text_to_morse(file_name):
                     # atuliza o ultimo char visto
                     last_char = char
 
-            #output.write('\n')
+            output.write('\n')
     output.close()
 
 def morse_to_txt(file_name):
@@ -88,18 +88,26 @@ def morse_to_txt(file_name):
 
     with open(input_file, 'r') as inp_file:
         for f_line in inp_file:
+            put_space = False
             # retira os caracteres indesejados
             f_line = re.sub('\n', '', f_line)
             # para todas as palavras encontradas na linha
             for word in f_line.split(SPACE_WORDS):
                 last_char = ''
+                
+                # caso haja uma palavra passada anterior
+                # coloca um espaco entre elas
+                if put_space:
+                    output.write(' ')
+
                 # para todos os caracteres na palavra
                 for char in word.split(SPACE_LETTERS):
                     last_char = inv_morse_codes[char]
                     # escreve a letra correspondente
                     output.write(last_char)
                 
-                output.write(' ')
+                put_space = True
+            output.write('\n')                
     output.close()
 
 
@@ -112,30 +120,36 @@ def morse_to_wave(file_name):
     input_file = file_name + '.morse'
     out_file = file_name + '.wav'
 
+    # parametros para gerar o .wav
     comptype='NONE'
     compname='not compressed' 
     sampwidth=2
     num_channels=1
 
+    # le todo o morse
     with open(input_file, 'r') as inp_file:
         morse = np.array([int(i) for i in inp_file.readline() if i != '\n'])
     
     num_samples = int(SAMP_RATE * TIME_UNI)
 
+    # calcula as ondas
     wave_0 = [0 for i in range(num_samples)]
     wave_1 = [np.sin(2 * np.pi * FREQ * i / SAMP_RATE) for i in range(num_samples)]
     waves = [wave_0, wave_1]
 
+    # cria a onda completa, de acordo com o morse
     full_wave = []
     for i in morse:
         full_wave.extend(waves[i])
 
+    # plota a onda
     plt.plot(full_wave)
     plt.savefig(file_name + '_wave.png')
 
     print("Creating file: " + out_file)
     print("Estimated time (in seconds): " + str(len(morse)*TIME_UNI))
-    n_frames = len(full_wave)  # Len of the wave is the number of the frames.
+    # escreve o arquivo
+    n_frames = len(full_wave)
     with wave.open(out_file, 'wb') as wave_file:
         wave_file.setparams((num_channels, sampwidth, SAMP_RATE, n_frames, comptype, compname))
 
@@ -153,6 +167,7 @@ def wave_to_morse(file_name):
 
     num_samples = int(SAMP_RATE * TIME_UNI)
 
+    # le toda a onda existente no arquivo
     with wave.open(input_file, 'rb') as wave_file:
         n_frames = wave_file.getnframes()
         data = wave_file.readframes(n_frames)
@@ -160,12 +175,17 @@ def wave_to_morse(file_name):
         
     print('Creating file: ' + out_file) 
     output = open(out_file, 'w')
+    # pega o tamanho correspondante de samples para um
+    # valor binario
     for i in range(0, len(data), num_samples):
+        # se o valor maximo desta amostra for maior que zero
+        # este recebe o valo '1'
         if data[i:i+num_samples].max() > 0:
             output.write('1')
+        # caso contrario, '0'
         else:
             output.write('0')
-        
+    output.write('\n')
     output.close
 
 # ------------------------------------------------------------------------------------------- Main
