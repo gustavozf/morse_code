@@ -116,6 +116,7 @@ def morse_to_wave(file_name):
     global AMPL
     global SAMP_RATE
     global TIME_UNI
+    global SPACE_WORDS
 
     input_file = file_name + '.morse'
     out_file = file_name + '.wav'
@@ -128,8 +129,10 @@ def morse_to_wave(file_name):
 
     # le todo o morse
     with open(input_file, 'r') as inp_file:
-        morse = np.array([int(i) for i in inp_file.readline() if i != '\n'])
-    
+        inp_morse = inp_file.read()
+
+    inp_morse = re.sub('\n', SPACE_WORDS, inp_morse)[:-7]
+    morse = np.array([int(i) for i in inp_morse])
     num_samples = int(SAMP_RATE * TIME_UNI)
 
     # calcula as ondas
